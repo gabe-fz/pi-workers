@@ -1,16 +1,28 @@
 {
   "workers": {
-    "quick": {
+    "luna": {
       "provider": "openai-codex",
       "model": "gpt-5.6-luna",
-      "thinking": "high",
-      "description": "Small fixes, routine implementation, and straightforward questions."
+      "thinking": "xhigh",
+      "description": "Capable daily coding worker for well-scoped features, substantial implementation, tests, and debugging—not merely grunt work."
     },
-    "architect": {
+    "terra": {
+      "provider": "openai-codex",
+      "model": "gpt-5.6-terra",
+      "thinking": "high",
+      "description": "Balanced worker for ambiguous, multi-file tasks that need repository exploration, edge-case discovery, and implementation with less hand-holding."
+    },
+    "sol": {
+      "provider": "openai-codex",
+      "model": "gpt-5.6-sol",
+      "thinking": "medium",
+      "description": "Strong specialist for architecture, migrations, difficult root-cause debugging, orchestration, and final review of risky changes."
+    },
+    "astra": {
       "provider": "openai-codex",
       "model": "gpt-6-astra",
-      "thinking": "medium",
-      "description": "Difficult reasoning, architecture, and ambiguous problems."
+      "thinking": "low",
+      "description": "Selective high-leverage worker for the hardest planning, deep reasoning, architecture, and stubborn debugging; use sparingly because it consumes quota quickly."
     }
   }
 }
