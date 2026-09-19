@@ -1,0 +1,16 @@
+{
+  "workers": {
+    "quick": {
+      "provider": "openai-codex",
+      "model": "gpt-5.6-luna",
+      "thinking": "high",
+      "description": "Small fixes, routine implementation, and straightforward questions."
+    },
+    "architect": {
+      "provider": "openai-codex",
+      "model": "gpt-6-astra",
+      "thinking": "medium",
+      "description": "Difficult reasoning, architecture, and ambiguous problems."
+    }
+  }
+}

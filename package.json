@@ -1,0 +1,31 @@
+{
+  "name": "pi-workers",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Named model and thinking-level workers for pi.",
+  "keywords": ["pi-package", "pi", "workers", "models"],
+  "license": "MIT",
+  "exports": {
+    ".": "./src/client.ts",
+    "./types": "./src/types.ts"
+  },
+  "pi": {
+    "extensions": ["./extensions"]
+  },
+  "scripts": {
+    "test": "tsx --test test/**/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "^0.85.1",
+    "@earendil-works/pi-coding-agent": "^0.85.1",
+    "@types/node": "^22.15.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  }
+}
