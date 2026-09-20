@@ -46,17 +46,23 @@ Create `~/.pi/agent/workers.json`:
 }
 ```
 
-Aliases must start with a lowercase letter and contain only lowercase letters, digits, and hyphens. Built-in pi commands and `worker`/`workers` are reserved. Thinking can be `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`.
+Aliases must start with a lowercase letter and contain only lowercase letters, digits, and hyphens. Built-in pi commands and `worker`/`workers`/`default`/`none` are reserved. Thinking can be `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`.
 
 ## Use
 
 - `/workers` — view descriptions and pick a worker.
 - `/worker luna` — canonical switch command, with alias completion.
+- `/astra m` or `/worker astra m` — switch with medium thinking. Shortcuts: `o` (off), `min`, `l`, `m`, `h`, `x`/`xh` (xhigh), and `max`; full names also work. Omitting effort restores the worker's configured thinking.
+- `/worker default` — pick a persistent startup default.
+- `/worker default luna` — save Luna as the default in `~/.pi/agent/workers.json` (`"defaultWorker": "luna"`).
+- `/worker default none` — remove the startup default.
+
+The saved default applies on pi startup (including startup with a resumed session) and `/new`, not `/reload`, `/resume`, or `/fork` within a running pi. It overrides the initially selected model/thinking at startup; subsequent switches remain yours. Saving a default does not switch the current worker. Invalid or unavailable defaults report an error instead of silently falling back.
 - `/luna`, `/terra`, `/sol`, or `/astra` — automatically registered shorthand.
 
 If an alias collides with another extension command, pi assigns this extension a numeric command suffix and pi-workers reports it at session start. `/worker <alias>` always remains available.
 
-Switches are accepted only while pi is idle. Missing models, missing provider authentication, and unsupported or clamped thinking levels return explicit errors. A failed post-model-change validation is rolled back. The footer displays `worker:<alias>` only while the actual model and thinking level still exactly match the worker selected through pi-workers. Manual model or thinking changes clear that status.
+Switches are accepted only while pi is idle. Missing models, missing provider authentication, and unsupported or clamped thinking levels return explicit errors. A failed post-model-change validation is rolled back. The footer displays `worker:<alias>` only while the actual model and thinking level still exactly match the worker and optional thinking override selected through pi-workers. Manual model or thinking changes clear that status.
 
 ## Extension API
 

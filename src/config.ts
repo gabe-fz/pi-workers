@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import type { ThinkingLevel, Worker } from "./types.js";
 
 const THINKING_LEVELS = new Set<ThinkingLevel>(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
@@ -8,11 +8,12 @@ const ALIAS_PATTERN = /^[a-z][a-z0-9-]*$/;
 export const RESERVED_ALIASES = new Set([
 	"changelog", "clone", "compact", "copy", "export", "fork", "hotkeys", "import", "login", "logout", "model", "name",
 	"new", "quit", "reload", "resume", "scoped-models", "session", "settings", "share", "thinking", "tree", "trust", "workers",
-	"worker",
+	"worker", "default", "none",
 ]);
 
 export interface LoadedWorkers {
 	workers: Worker[];
+	defaultWorker?: string;
 	errors: string[];
 }
 
@@ -58,7 +59,26 @@ export function parseWorkersConfig(value: unknown): LoadedWorkers {
 			description: (candidate.description as string).trim(),
 		});
 	}
+	if (root.defaultWorker !== undefined) {
+		if (typeof root.defaultWorker !== "string" || !workers.some((w) => w.alias === root.defaultWorker)) {
+			errors.push('"defaultWorker" must name a valid worker');
+		} else {
+			return { workers, errors, defaultWorker: root.defaultWorker };
+		}
+	}
 	return { workers, errors };
+}
+
+export function saveDefaultWorker(path: string, alias?: string): void {
+	const root = JSON.parse(readFileSync(path, "utf8"));
+	const parsed = parseWorkersConfig(root);
+	if (parsed.errors.length) throw new Error(parsed.errors.join("; "));
+	if (alias && !parsed.workers.some((w) => w.alias === alias)) throw new Error(`Unknown worker "${alias}"`);
+	if (alias) root.defaultWorker = alias;
+	else delete root.defaultWorker;
+	const temporary = `${path}.${process.pid}.tmp`;
+	writeFileSync(temporary, `${JSON.stringify(root, null, 2)}\n`, { mode: 0o600 });
+	renameSync(temporary, path);
 }
 
 export function loadWorkersConfig(path: string): LoadedWorkers {

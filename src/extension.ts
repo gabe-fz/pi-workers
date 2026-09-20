@@ -6,7 +6,7 @@ import {
 	type ExtensionAPI,
 	type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { loadWorkersConfig } from "./config.js";
+import { loadWorkersConfig, saveDefaultWorker } from "./config.js";
 import {
 	WORKERS_API_VERSION,
 	WORKERS_CHANGED_EVENT,
@@ -31,12 +31,28 @@ export function supportsThinking(model: Model<Api>, level: ThinkingLevel): boole
 	return model.thinkingLevelMap?.[level] !== null;
 }
 
-export default function workersExtension(pi: ExtensionAPI) {
-	const loaded = loadWorkersConfig(CONFIG_PATH);
+const efforts: Record<string, ThinkingLevel> = {
+	o: "off", off: "off", min: "minimal", minimal: "minimal", l: "low", low: "low",
+	m: "medium", medium: "medium", h: "high", high: "high", x: "xhigh", xh: "xhigh", xhigh: "xhigh", max: "max",
+};
+
+export function parseThinking(value: string): ThinkingLevel | undefined {
+	return Object.hasOwn(efforts, value.toLowerCase()) ? efforts[value.toLowerCase()] : undefined;
+}
+
+function effortCompletions(prefix: string) {
+	return Object.entries(efforts).filter(([key]) => key.startsWith(prefix))
+		.map(([value, label]) => ({ value, label }));
+}
+
+export default function workersExtension(pi: ExtensionAPI, configPath = CONFIG_PATH) {
+	const loaded = loadWorkersConfig(configPath);
 	const workers = loaded.workers;
 	const byAlias = new Map(workers.map((worker) => [worker.alias, worker]));
 	let currentCtx: ExtensionContext | undefined;
 	let preferredAlias: string | null = null;
+	let preferredThinking: ThinkingLevel | undefined;
+	let defaultWorker = loaded.defaultWorker;
 	let lastState: WorkerState = { activeAlias: null, provider: null, model: null, thinking: "off" };
 	let switchInFlight = false;
 
@@ -46,7 +62,7 @@ export default function workersExtension(pi: ExtensionAPI) {
 		let activeAlias: string | null = null;
 		if (preferredAlias) {
 			const worker = byAlias.get(preferredAlias);
-			if (worker && model?.provider === worker.provider && model.id === worker.model && thinking === worker.thinking) {
+			if (worker && model?.provider === worker.provider && model.id === worker.model && thinking === (preferredThinking ?? worker.thinking)) {
 				activeAlias = preferredAlias;
 			}
 		}
@@ -69,8 +85,9 @@ export default function workersExtension(pi: ExtensionAPI) {
 		updateStatus(ctx);
 	}
 
-	async function switchWorker(alias: string): Promise<SwitchResult> {
-		const worker = byAlias.get(alias);
+	async function switchWorker(alias: string, thinking?: ThinkingLevel): Promise<SwitchResult> {
+		const preset = byAlias.get(alias);
+		const worker = preset && { ...preset, thinking: thinking ?? preset.thinking };
 		if (!worker) return { ok: false, code: "unknown-worker", message: `Unknown worker "${alias}"` };
 		const ctx = currentCtx;
 		if (!ctx) return { ok: false, code: "switch-failed", message: "pi-workers is not ready" };
@@ -97,7 +114,8 @@ export default function workersExtension(pi: ExtensionAPI) {
 		const before = state(ctx);
 		if (before.provider === worker.provider && before.model === worker.model && before.thinking === worker.thinking) {
 			preferredAlias = alias;
-			pi.appendEntry("pi-workers-state", { alias });
+			preferredThinking = worker.thinking;
+			pi.appendEntry("pi-workers-state", { alias, thinking: worker.thinking });
 			publishState("worker-switch", ctx);
 			return { ok: true, changed: false, current: state(ctx) };
 		}
@@ -128,7 +146,8 @@ export default function workersExtension(pi: ExtensionAPI) {
 				};
 			}
 			preferredAlias = alias;
-			pi.appendEntry("pi-workers-state", { alias });
+			preferredThinking = worker.thinking;
+			pi.appendEntry("pi-workers-state", { alias, thinking: worker.thinking });
 			return { ok: true, changed: true, current: state(ctx) };
 		} catch (error) {
 			try {
@@ -144,10 +163,16 @@ export default function workersExtension(pi: ExtensionAPI) {
 		}
 	}
 
-	async function activate(alias: string, ctx: ExtensionContext): Promise<void> {
-		const result = await switchWorker(alias);
+	async function activate(alias: string, ctx: ExtensionContext, args = ""): Promise<void> {
+		const token = args.trim();
+		const thinking = token ? parseThinking(token) : undefined;
+		if (token && !thinking) {
+			ctx.ui.notify("Thinking must be off/o, minimal/min, low/l, medium/m, high/h, xhigh/x/xh, or max", "error");
+			return;
+		}
+		const result = await switchWorker(alias, thinking);
 		if (result.ok) {
-			ctx.ui.notify(`Worker "${alias}" ${result.changed ? "activated" : "is already active"}`, "info");
+			ctx.ui.notify(`Worker "${alias}" ${result.changed ? "activated" : "is already active"} (${result.current.thinking})`, "info");
 		} else {
 			ctx.ui.notify(result.message, "error");
 		}
@@ -175,24 +200,49 @@ export default function workersExtension(pi: ExtensionAPI) {
 		handler: async (_args, ctx) => chooseWorker(ctx),
 	});
 	pi.registerCommand("worker", {
-		description: "Switch worker (usage: /worker <alias>)",
+		description: "Switch worker: /worker <alias> [thinking]; save default: /worker default [alias|none]",
 		getArgumentCompletions: (prefix) => {
-			const matches = workers
+			const match = prefix.match(/^(\S+)\s+(.*)$/);
+			if (match) {
+				const [, alias, tail] = match;
+				const items = alias === "default"
+					? ["none", ...workers.map((w) => w.alias)].filter((v) => v.startsWith(tail!)).map((value) => ({ value, label: value }))
+					: byAlias.has(alias!) ? effortCompletions(tail!) : [];
+				return items.map((item) => ({ ...item, value: `${alias} ${item.value}` }));
+			}
+			const matches = [{ alias: "default", description: "Choose the startup default" }, ...workers]
 				.filter((worker) => worker.alias.startsWith(prefix))
 				.map((worker) => ({ value: worker.alias, label: worker.alias, description: worker.description }));
 			return matches.length > 0 ? matches : null;
 		},
 		handler: async (args, ctx) => {
-			const alias = args.trim();
+			const [alias, ...rest] = args.trim().split(/\s+/);
 			if (!alias) return chooseWorker(ctx);
-			await activate(alias, ctx);
+			if (alias === "default") {
+				let selected = rest.join(" ");
+				if (!selected) {
+					if (!ctx.hasUI) return ctx.ui.notify(`Default worker: ${defaultWorker ?? "none"}. Use /worker default <alias|none>`, "info");
+					selected = await ctx.ui.select(`Default worker: ${defaultWorker ?? "none"}`, ["none", ...workers.map((w) => w.alias)]) ?? "";
+					if (!selected) return;
+				}
+				try {
+					saveDefaultWorker(configPath, selected === "none" ? undefined : selected);
+					defaultWorker = selected === "none" ? undefined : selected;
+					ctx.ui.notify(`Default worker: ${defaultWorker ?? "none"} (applies on startup and /new)`, "info");
+				} catch (error) {
+					ctx.ui.notify(String(error), "error");
+				}
+				return;
+			}
+			await activate(alias, ctx, rest.join(" "));
 		},
 	});
 
 	for (const worker of workers) {
 		pi.registerCommand(worker.alias, {
 			description: `Switch to pi worker "${worker.alias}": ${worker.description}`,
-			handler: async (_args, ctx) => activate(worker.alias, ctx),
+			getArgumentCompletions: effortCompletions,
+			handler: async (args, ctx) => activate(worker.alias, ctx, args),
 		});
 	}
 
@@ -211,12 +261,14 @@ export default function workersExtension(pi: ExtensionAPI) {
 		}
 	});
 
-	pi.on("session_start", (_event, ctx) => {
+	pi.on("session_start", async (event, ctx) => {
 		currentCtx = ctx;
 		const saved = [...ctx.sessionManager.getEntries()].reverse().find(
 			(entry) => entry.type === "custom" && entry.customType === "pi-workers-state",
-		) as { data?: { alias?: unknown } } | undefined;
+		) as { data?: { alias?: unknown; thinking?: string } } | undefined;
 		preferredAlias = typeof saved?.data?.alias === "string" ? saved.data.alias : null;
+		preferredThinking = typeof saved?.data?.thinking === "string" ? parseThinking(saved.data.thinking) : undefined;
+		if (defaultWorker && (event.reason === "startup" || event.reason === "new")) await activate(defaultWorker, ctx);
 		lastState = state(ctx);
 		updateStatus(ctx);
 
