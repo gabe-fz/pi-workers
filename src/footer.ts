@@ -1,4 +1,5 @@
 import { FooterComponent } from "@earendil-works/pi-coding-agent";
+import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 /** Decorate only the native model row, consuming padding rather than adding width. */
 export function labelModelRow(lines: string[], model: string | null, alias: string | null): string[] {
@@ -9,14 +10,18 @@ export function labelModelRow(lines: string[], model: string | null, alias: stri
 	const label = `[${alias}] `;
 	const before = row.slice(0, index);
 	// Native footer separates stats and the optional provider/model with padding.
-	// If space is scarce, leave the native row alone rather than hide model/effort.
+	// Prefer consuming padding; on crowded rows truncate stats, not the worker label.
 	const padding = / {2,}/g;
 	let match: RegExpExecArray | null;
 	let gap: RegExpExecArray | undefined;
 	while ((match = padding.exec(before))) gap = match;
-	if (!gap || gap[0].length < label.length + 2) return lines;
+	if (!gap) return lines;
 	const result = [...lines];
-	result[1] = before.slice(0, gap.index) + gap[0].slice(label.length) + before.slice(gap.index + gap[0].length) + label + row.slice(index);
+	const right = before.slice(gap.index + gap[0].length) + label + row.slice(index);
+	const width = visibleWidth(row);
+	const leftWidth = Math.max(0, width - visibleWidth(right) - 2);
+	const left = truncateToWidth(before.slice(0, gap.index), leftWidth, "…");
+	result[1] = truncateToWidth(left + " ".repeat(Math.max(0, width - visibleWidth(left) - visibleWidth(right))) + right, width);
 	return result;
 }
 
