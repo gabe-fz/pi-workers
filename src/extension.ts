@@ -7,6 +7,7 @@ import {
 	type ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { loadWorkersConfig, saveDefaultWorker } from "./config.js";
+import { installWorkerFooter } from "./footer.js";
 import {
 	WORKERS_API_VERSION,
 	WORKERS_CHANGED_EVENT,
@@ -55,6 +56,7 @@ export default function workersExtension(pi: ExtensionAPI, configPath = CONFIG_P
 	let defaultWorker = loaded.defaultWorker;
 	let lastState: WorkerState = { activeAlias: null, provider: null, model: null, thinking: "off" };
 	let switchInFlight = false;
+	let disposeFooter: (() => void) | undefined;
 
 	function state(ctx = currentCtx): WorkerState {
 		const model = ctx?.model;
@@ -70,8 +72,8 @@ export default function workersExtension(pi: ExtensionAPI, configPath = CONFIG_P
 	}
 
 	function updateStatus(ctx: ExtensionContext): void {
-		const current = state(ctx);
-		ctx.ui.setStatus("pi-workers", current.activeAlias ? ctx.ui.theme.fg("accent", `worker:${current.activeAlias}`) : undefined);
+		// Clear the legacy extra status row; this also requests a footer redraw.
+		ctx.ui.setStatus("pi-workers", undefined);
 	}
 
 	function publishState(source: WorkersChangedEvent["source"], ctx = currentCtx): void {
@@ -263,6 +265,8 @@ export default function workersExtension(pi: ExtensionAPI, configPath = CONFIG_P
 
 	pi.on("session_start", async (event, ctx) => {
 		currentCtx = ctx;
+		disposeFooter?.();
+		disposeFooter = ctx.mode === "tui" ? installWorkerFooter(() => state()) : undefined;
 		const saved = [...ctx.sessionManager.getEntries()].reverse().find(
 			(entry) => entry.type === "custom" && entry.customType === "pi-workers-state",
 		) as { data?: { alias?: unknown; thinking?: string } } | undefined;
@@ -294,6 +298,8 @@ export default function workersExtension(pi: ExtensionAPI, configPath = CONFIG_P
 		publishState("thinking-change", ctx);
 	});
 	pi.on("session_shutdown", () => {
+		disposeFooter?.();
+		disposeFooter = undefined;
 		currentCtx = undefined;
 	});
 }

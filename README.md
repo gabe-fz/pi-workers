@@ -62,7 +62,7 @@ The saved default applies on pi startup (including startup with a resumed sessio
 
 If an alias collides with another extension command, pi assigns this extension a numeric command suffix and pi-workers reports it at session start. `/worker <alias>` always remains available.
 
-Switches are accepted only while pi is idle. Missing models, missing provider authentication, and unsupported or clamped thinking levels return explicit errors. A failed post-model-change validation is rolled back. The footer displays `worker:<alias>` only while the actual model and thinking level still exactly match the worker and optional thinking override selected through pi-workers. Manual model or thinking changes clear that status.
+Switches are accepted only while pi is idle. Missing models, missing provider authentication, and unsupported or clamped thinking levels return explicit errors. A failed post-model-change validation is rolled back. The native footer displays `[astra] gpt-6-astra • low` on its existing model row (no extra worker line) only while the actual model and thinking level still exactly match the worker and optional thinking override selected through pi-workers. Manual model or thinking changes clear that label. On narrow terminals the label is omitted if it would crowd out the native model information. Custom replacement footers are left unchanged. Since pi has no native model-label hook, this uses a reversible adapter around the exported native footer renderer, removed on shutdown/reload.
 
 ## Extension API
 
