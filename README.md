@@ -22,25 +22,25 @@ Create `~/.pi/agent/workers.json`:
       "provider": "openai-codex",
       "model": "gpt-5.6-luna",
       "thinking": "xhigh",
-      "description": "Capable daily coding worker for well-scoped features, substantial implementation, tests, and debugging—not merely grunt work."
+      "description": "Best-value, high-throughput default for well-scoped features, substantial implementation, tests, and debugging—not merely grunt work; XHigh costs more than lower Luna efforts."
     },
     "terra": {
       "provider": "openai-codex",
       "model": "gpt-5.6-terra",
       "thinking": "high",
-      "description": "Balanced worker for ambiguous, multi-file tasks that need repository exploration, edge-case discovery, and implementation with less hand-holding."
+      "description": "Moderate-cost middle ground for ambiguous, multi-file work needing exploration, edge-case discovery, and more autonomy than Luna; typically slower and costlier than Luna."
     },
     "sol": {
       "provider": "openai-codex",
       "model": "gpt-5.6-sol",
       "thinking": "medium",
-      "description": "Strong specialist for architecture, migrations, difficult root-cause debugging, orchestration, and final review of risky changes."
+      "description": "Expensive specialist for architecture, migrations, difficult root-cause debugging, orchestration, and final review; reserve it for work where stronger judgment repays the extra quota."
     },
     "astra": {
       "provider": "openai-codex",
       "model": "gpt-6-astra",
       "thinking": "low",
-      "description": "Selective high-leverage worker for the hardest planning, deep reasoning, architecture, and stubborn debugging; use sparingly because it consumes quota quickly."
+      "description": "Premium, quota-heavy worker for only the hardest planning, deep reasoning, architecture, and stubborn debugging; Low effort limits cost, but use it sparingly."
     }
   }
 }
@@ -95,10 +95,10 @@ The client exposes version `1` and asynchronous `list()`, `get(alias)`, `current
 
 The example lineup is based on recurring reports in r/codex as of September 2026, not controlled benchmarks:
 
-- **Luna XHigh** is repeatedly described as a strong value for well-defined implementation and can handle substantial work—not just mechanical edits.
-- **Terra High** is commonly treated as the middle ground for ambiguous, multi-file work and exploration.
-- **Sol Medium** is often reserved for architecture, planning, migrations, difficult debugging, and review.
-- **Astra Low** is suggested for selective, high-leverage reasoning and planning because higher efforts can consume quota rapidly.
+- **Luna XHigh** is the best-value, high-throughput default for well-defined implementation and can handle substantial work—not just mechanical edits. XHigh still costs more than lower Luna efforts.
+- **Terra High** is a moderate-cost middle ground for ambiguous, multi-file work, trading more time and quota for autonomy beyond Luna.
+- **Sol Medium** is an expensive specialist best reserved for architecture, planning, migrations, difficult debugging, and review.
+- **Astra Low** is a premium, quota-heavy choice for selective high-leverage reasoning; Low effort moderates cost, but it remains a scarce option.
 
 Reports are mixed and model behavior changes, so treat these as useful starting points and adjust effort levels to your own workload. Representative discussions:
 
