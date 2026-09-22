@@ -20,7 +20,7 @@ Create `~/.pi/agent/workers.json`:
   "workers": {
     "luna": {
       "provider": "openai-codex",
-      "model": "gpt-5.6-luna",
+      "model": "gpt-6-luna",
       "thinking": "xhigh",
       "description": "Best-value, high-throughput default for well-scoped features, substantial implementation, tests, and debugging—not merely grunt work; XHigh costs more than lower Luna efforts."
     },
@@ -32,7 +32,7 @@ Create `~/.pi/agent/workers.json`:
     },
     "sol": {
       "provider": "openai-codex",
-      "model": "gpt-5.6-sol",
+      "model": "gpt-6-sol",
       "thinking": "medium",
       "description": "Expensive specialist for architecture, migrations, difficult root-cause debugging, orchestration, and final review; reserve it for work where stronger judgment repays the extra quota."
     },
@@ -99,7 +99,7 @@ The client exposes version `1` and asynchronous `list()`, `get(alias)`, `current
 
 ## Why these example workers?
 
-The example lineup is based on recurring reports in r/codex as of September 2026, not controlled benchmarks:
+The example model IDs track the latest available versions in the OpenAI Codex catalog: GPT-6 Luna, GPT-5.6 Terra, GPT-6 Sol, and GPT-6 Astra. The roles and effort levels below originated from recurring reports in r/codex as of September 2026, not controlled benchmarks; the older reports do not establish GPT-6 Luna or Sol performance or cost:
 
 - **Luna XHigh** is the best-value, high-throughput default for well-defined implementation and can handle substantial work—not just mechanical edits. XHigh still costs more than lower Luna efforts.
 - **Terra High** is a moderate-cost middle ground for ambiguous, multi-file work, trading more time and quota for autonomy beyond Luna.
