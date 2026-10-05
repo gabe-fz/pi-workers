@@ -14,7 +14,7 @@
     },
     "sol": {
       "provider": "openai-codex",
-      "model": "gpt-6-sol",
+      "model": "gpt-6.1-sol",
       "thinking": "medium",
       "description": "Expensive specialist for architecture, migrations, difficult root-cause debugging, orchestration, and final review; reserve it for work where stronger judgment repays the extra quota."
     },

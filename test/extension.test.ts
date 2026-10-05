@@ -23,5 +23,6 @@ test("thinking support honors model reasoning and explicit null mappings", () =>
 	assert.equal(supportsThinking(model(), "high"), true);
 	assert.equal(supportsThinking(model({ reasoning: false }), "high"), false);
 	assert.equal(supportsThinking(model({ reasoning: false }), "off"), true);
+	assert.equal(supportsThinking(model({ thinkingLevelMap: { off: null } }), "off"), false);
 	assert.equal(supportsThinking(model({ thinkingLevelMap: { xhigh: null } }), "xhigh"), false);
 });

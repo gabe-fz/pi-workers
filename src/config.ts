@@ -1,5 +1,6 @@
-import { readFileSync, renameSync, writeFileSync } from "node:fs";
+import { readFileSync, renameSync, unlinkSync, writeFileSync } from "node:fs";
 import type { ThinkingLevel, Worker } from "./types.js";
+import type { WorkerUpdate } from "./updates.js";
 
 const THINKING_LEVELS = new Set<ThinkingLevel>(["off", "minimal", "low", "medium", "high", "xhigh", "max"]);
 const ALIAS_PATTERN = /^[a-z][a-z0-9-]*$/;
@@ -8,7 +9,7 @@ const ALIAS_PATTERN = /^[a-z][a-z0-9-]*$/;
 export const RESERVED_ALIASES = new Set([
 	"changelog", "clone", "compact", "copy", "export", "fork", "hotkeys", "import", "login", "logout", "model", "name",
 	"new", "quit", "reload", "resume", "scoped-models", "session", "settings", "share", "thinking", "tree", "trust", "workers",
-	"worker", "default", "none",
+	"worker", "default", "none", "updates",
 ]);
 
 export interface LoadedWorkers {
@@ -79,6 +80,30 @@ export function saveDefaultWorker(path: string, alias?: string): void {
 	const temporary = `${path}.${process.pid}.tmp`;
 	writeFileSync(temporary, `${JSON.stringify(root, null, 2)}\n`, { mode: 0o600 });
 	renameSync(temporary, path);
+}
+
+export function saveWorkerUpdates(path: string, updates: readonly WorkerUpdate[]): void {
+	const root = JSON.parse(readFileSync(path, "utf8"));
+	const parsed = parseWorkersConfig(root);
+	if (parsed.errors.length) throw new Error(parsed.errors.join("; "));
+	for (const update of updates) {
+		if (update.status !== "newer" || !update.candidate) continue;
+		const configured = root.workers[update.worker.alias];
+		if (configured?.provider !== update.worker.provider || configured.model !== update.worker.model || configured.thinking !== update.worker.thinking) {
+			throw new Error(`Worker "${update.worker.alias}" changed since the update check; rerun /worker updates`);
+		}
+	}
+	for (const update of updates) {
+		if (update.status === "newer" && update.candidate) root.workers[update.worker.alias].model = update.candidate.id;
+	}
+	const temporary = `${path}.${process.pid}.tmp`;
+	try {
+		writeFileSync(temporary, `${JSON.stringify(root, null, 2)}\n`, { mode: 0o600 });
+		renameSync(temporary, path);
+	} catch (error) {
+		try { unlinkSync(temporary); } catch { /* no temp file */ }
+		throw error;
+	}
 }
 
 export function loadWorkersConfig(path: string): LoadedWorkers {

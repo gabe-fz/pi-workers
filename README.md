@@ -32,7 +32,7 @@ Create `~/.pi/agent/workers.json`:
     },
     "sol": {
       "provider": "openai-codex",
-      "model": "gpt-6-sol",
+      "model": "gpt-6.1-sol",
       "thinking": "medium",
       "description": "Expensive specialist for architecture, migrations, difficult root-cause debugging, orchestration, and final review; reserve it for work where stronger judgment repays the extra quota."
     },
@@ -46,7 +46,7 @@ Create `~/.pi/agent/workers.json`:
 }
 ```
 
-Aliases must start with a lowercase letter and contain only lowercase letters, digits, and hyphens. Built-in pi commands and `worker`/`workers`/`default`/`none` are reserved. Thinking can be `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`.
+Aliases must start with a lowercase letter and contain only lowercase letters, digits, and hyphens. Built-in pi commands and `worker`/`workers`/`default`/`none`/`updates` are reserved. Thinking can be `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`.
 
 ## Use
 
@@ -56,6 +56,8 @@ Aliases must start with a lowercase letter and contain only lowercase letters, d
 - `/worker default` — pick a persistent startup default.
 - `/worker default luna` — save Luna as the default in `~/.pi/agent/workers.json` (`"defaultWorker": "luna"`).
 - `/worker default none` — remove the startup default.
+- `/worker updates` — refresh the configured providers' model catalogs and report newer numeric versions of each worker's *same named model family* (for example, `gpt-6-sol` → `gpt-6.1-sol`). A failed or timed-out refresh does **not** silently use stale catalog data.
+- `/worker updates apply` — save compatible newer model IDs to `workers.json` and reload the extension; it never switches the active model. Other settings and descriptions are preserved. Review the report first: a higher version is not necessarily cheaper or better.
 
 The saved default applies on pi startup (including startup with a resumed session) and `/new`, not `/reload`, `/resume`, or `/fork` within a running pi. It overrides the initially selected model/thinking at startup; subsequent switches remain yours. Saving a default does not switch the current worker. Invalid or unavailable defaults report an error instead of silently falling back.
 - `/luna`, `/terra`, `/sol`, or `/astra` — automatically registered shorthand.
@@ -99,7 +101,7 @@ The client exposes version `1` and asynchronous `list()`, `get(alias)`, `current
 
 ## Why these example workers?
 
-The example model IDs track the latest available versions in the OpenAI Codex catalog: GPT-6 Luna, GPT-5.6 Terra, GPT-6 Sol, and GPT-6 Astra. The roles and effort levels below originated from recurring reports in r/codex as of September 2026, not controlled benchmarks; the older reports do not establish GPT-6 Luna or Sol performance or cost:
+The example model IDs track the latest available versions in the OpenAI Codex catalog: GPT-6 Luna, GPT-5.6 Terra, GPT-6.1 Sol, and GPT-6 Astra. The roles and effort levels below originated from recurring reports in r/codex as of September 2026, not controlled benchmarks; the older reports do not establish GPT-6 Luna or Sol performance or cost:
 
 - **Luna XHigh** is the best-value, high-throughput default for well-defined implementation and can handle substantial work—not just mechanical edits. XHigh still costs more than lower Luna efforts.
 - **Terra High** is a moderate-cost middle ground for ambiguous, multi-file work, trading more time and quota for autonomy beyond Luna.

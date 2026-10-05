@@ -5,8 +5,10 @@ import {
 	getAgentDir,
 	type ExtensionAPI,
 	type ExtensionContext,
+	type ExtensionCommandContext,
 } from "@earendil-works/pi-coding-agent";
-import { loadWorkersConfig, saveDefaultWorker } from "./config.js";
+import { loadWorkersConfig, saveDefaultWorker, saveWorkerUpdates } from "./config.js";
+import { findWorkerUpdates, formatWorkerUpdates } from "./updates.js";
 import { installWorkerFooter } from "./footer.js";
 import {
 	WORKERS_API_VERSION,
@@ -27,7 +29,7 @@ function sameState(a: WorkerState, b: WorkerState): boolean {
 }
 
 export function supportsThinking(model: Model<Api>, level: ThinkingLevel): boolean {
-	if (level === "off") return true;
+	if (level === "off") return model.thinkingLevelMap?.off !== null;
 	if (!model.reasoning) return false;
 	return model.thinkingLevelMap?.[level] !== null;
 }
@@ -197,22 +199,52 @@ export default function workersExtension(pi: ExtensionAPI, configPath = CONFIG_P
 		if (worker) await activate(worker.alias, ctx);
 	}
 
+	async function checkUpdates(ctx: ExtensionCommandContext, apply: boolean): Promise<void> {
+		if (!workers.length) return ctx.ui.notify("No valid workers configured", "warning");
+		const providers = [...new Set(workers.map((worker) => worker.provider))];
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), 15000);
+		try {
+			const result = await ctx.modelRegistry.refresh({ allowNetwork: true, providers, signal: controller.signal });
+			if (result.aborted || controller.signal.aborted || result.errors.size) {
+				const detail = [...result.errors].map(([provider, error]) => `${provider}: ${error.message}`).join("; ");
+				ctx.ui.notify(`Model catalog refresh failed${detail ? ` (${detail})` : " (timed out)"}; no update check was trusted`, "error");
+				return;
+			}
+			const updates = findWorkerUpdates(workers, ctx.modelRegistry.getAvailable());
+			const report = formatWorkerUpdates(updates);
+			const newer = updates.filter((update) => update.status === "newer");
+			if (!apply || !newer.length) {
+				ctx.ui.notify(`${report}${newer.length ? "\nRun /worker updates apply to save these model IDs (no active model switch)." : ""}`, "info");
+				return;
+			}
+			saveWorkerUpdates(configPath, newer);
+			ctx.ui.notify(`${report}\nSaved ${newer.length} update(s) to ${configPath}; reloading pi-workers.`, "info");
+			await ctx.reload();
+		} catch (error) {
+			ctx.ui.notify(`Worker update check failed: ${error instanceof Error ? error.message : String(error)}`, "error");
+		} finally {
+			clearTimeout(timeout);
+		}
+	}
+
 	pi.registerCommand("workers", {
 		description: "List workers and select one",
 		handler: async (_args, ctx) => chooseWorker(ctx),
 	});
 	pi.registerCommand("worker", {
-		description: "Switch worker: /worker <alias> [thinking]; save default: /worker default [alias|none]",
+		description: "Switch worker; /worker default [alias|none]; /worker updates [apply] checks newer model versions",
 		getArgumentCompletions: (prefix) => {
 			const match = prefix.match(/^(\S+)\s+(.*)$/);
 			if (match) {
 				const [, alias, tail] = match;
 				const items = alias === "default"
 					? ["none", ...workers.map((w) => w.alias)].filter((v) => v.startsWith(tail!)).map((value) => ({ value, label: value }))
+					: alias === "updates" ? ["apply"].filter((v) => v.startsWith(tail!)).map((value) => ({ value, label: value }))
 					: byAlias.has(alias!) ? effortCompletions(tail!) : [];
 				return items.map((item) => ({ ...item, value: `${alias} ${item.value}` }));
 			}
-			const matches = [{ alias: "default", description: "Choose the startup default" }, ...workers]
+			const matches = [{ alias: "default", description: "Choose the startup default" }, { alias: "updates", description: "Check newer model versions" }, ...workers]
 				.filter((worker) => worker.alias.startsWith(prefix))
 				.map((worker) => ({ value: worker.alias, label: worker.alias, description: worker.description }));
 			return matches.length > 0 ? matches : null;
@@ -220,6 +252,13 @@ export default function workersExtension(pi: ExtensionAPI, configPath = CONFIG_P
 		handler: async (args, ctx) => {
 			const [alias, ...rest] = args.trim().split(/\s+/);
 			if (!alias) return chooseWorker(ctx);
+			if (alias === "updates") {
+				if (rest.length && !(rest.length === 1 && rest[0] === "apply")) {
+					ctx.ui.notify("Usage: /worker updates [apply]", "error");
+					return;
+				}
+				return checkUpdates(ctx, rest[0] === "apply");
+			}
 			if (alias === "default") {
 				let selected = rest.join(" ");
 				if (!selected) {
