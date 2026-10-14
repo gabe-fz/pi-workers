@@ -5,7 +5,7 @@ import { parseWorkersConfig } from "../src/config.js";
 const valid = {
 	workers: {
 		quick: {
-			provider: "openai-codex",
+			provider: "openai",
 			model: "gpt-test",
 			thinking: "high",
 			description: "Routine implementation",
